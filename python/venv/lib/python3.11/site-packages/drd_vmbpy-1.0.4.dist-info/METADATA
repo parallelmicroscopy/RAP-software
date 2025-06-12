@@ -1,0 +1,35 @@
+Metadata-Version: 2.1
+Name: drd-vmbpy
+Version: 1.0.4
+Summary: Unofficial Python bindings for VmbC
+Home-page: https://github.com/EtchedChampion/drd-VmbPy
+Author: Dennis Drost
+License: BSD 2-Clause License
+Project-URL: Bug Tracker, https://github.com/alliedvision/vmbpy/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Provides-Extra: numpy
+Requires-Dist: numpy ; extra == 'numpy'
+Provides-Extra: opencv
+Requires-Dist: opencv-python ; extra == 'opencv'
+Provides-Extra: test
+Requires-Dist: unittest-xml-reporting ; extra == 'test'
+Requires-Dist: flake8 ; extra == 'test'
+Requires-Dist: flake8-junit-report ; extra == 'test'
+Requires-Dist: mypy ; extra == 'test'
+Requires-Dist: coverage ; extra == 'test'
+
+# VmbPy 
+
+**THIS IS AN UNOFFICIAL PUBLISH ON PYPI OF THE VmbPy API DEVELOPED BY Allied Vision Technologies GmbH !**  
+
+This package is a Python wrapper for the Vimba C API provided by Allied Vision Technologies GmbH. 
+It is intended to be used with Allied Vision cameras that are compatible with the Vimba SDK.
+
+All the installation informatin can be found on the [Github repo](https://github.com/alliedvision/VmbPy).
+
+---
+@alliedvision If you want me to remove this package from PyPi, please create an issue on the [Github repo](https://github.com/EtchedChampion/drd-VmbPy).

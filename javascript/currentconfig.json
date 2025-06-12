@@ -1,0 +1,73 @@
+{
+  "directory": "/users/gilbub/documents/test",
+  "prefix": "img",
+  "defaults": [
+    "G3,B9,R5,G5,G9,R9",
+    "G9,R9,R7,R7,R9,R8",
+    "G9,R9,R7,R7,R9,R8",
+    "G9,R9,R7,R7,R9,R8"
+  ],
+  "sets": [
+    {
+      "setnum": 0,
+      "repeats": 10,
+      "period": 30,
+      "pause": 0,
+      "wells": [
+        {
+          "color": "R",
+          "index": 6,
+          "intensity": 9
+        },
+        {
+          "color": "R",
+          "index": 8,
+          "intensity": 7
+        },
+        {
+          "color": "R",
+          "index": 10,
+          "intensity": 9
+        },
+        {
+          "color": "R",
+          "index": 11,
+          "intensity": 8
+        },
+        {
+          "color": "G",
+          "index": 12,
+          "intensity": 9
+        },
+        {
+          "color": "R",
+          "index": 13,
+          "intensity": 9
+        },
+        {
+          "color": "R",
+          "index": 15,
+          "intensity": 2
+        }
+      ]
+    },
+    {
+      "setnum": 1,
+      "repeats": 10,
+      "period": 30,
+      "pause": 0,
+      "wells": [
+        {
+          "color": "G",
+          "index": 7,
+          "intensity": 9
+        },
+        {
+          "color": "G",
+          "index": 8,
+          "intensity": 7
+        }
+      ]
+    }
+  ]
+}
