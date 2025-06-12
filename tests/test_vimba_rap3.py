@@ -5,7 +5,7 @@ import logging
 import pytest
 from pathlib import Path
 from types import SimpleNamespace
-
+import logging
 import vimba_rap3
 from vimba_rap3 import *
 from vmbpy import *
@@ -308,3 +308,89 @@ def test_setup_camera_missing_stream_feature_is_ignored():
     assert cam.entered and cam.exited
     assert cam.ExposureAuto.calls == ['Continuous']
     assert cam.BalanceWhiteAuto.calls == ['Continuous']
+
+# --setup_pixel_format() tests --#
+
+def test_setup_pixel_format_direct(monkeypatch):
+    """  
+    If opencv_display_format is directly supported, it should be chosen.    """    # Make intersect_pixel_formats return all formats unfiltered
+    monkeypatch.setattr(vimba_rap3, 'intersect_pixel_formats',
+                        lambda fmts, subset: list(fmts))
+
+    calls = []
+    class Cam:
+        def get_pixel_formats(self):
+            return [opencv_display_format]
+        def set_pixel_format(self, fmt):
+            calls.append(fmt)
+
+    cam = Cam()
+    setup_pixel_format(cam)
+    assert calls == [opencv_display_format]
+
+def test_setup_pixel_format_convertible_color(monkeypatch):
+    """
+    If no direct support, but a color format is convertible → pick that.    """
+    monkeypatch.setattr(vimba_rap3, 'intersect_pixel_formats', lambda fmts, subset: list(fmts))
+
+    fmt1 = DummyFormat([opencv_display_format])   # convertible color
+    fmt2 = DummyFormat([])                        # not convertible
+
+    calls = []
+    class Cam:
+        def get_pixel_formats(self):
+            return [fmt1, fmt2]
+        def set_pixel_format(self, fmt):
+            calls.append(fmt)
+
+    cam = Cam()
+    setup_pixel_format(cam)
+    assert calls == [fmt1]
+
+def test_setup_pixel_format_convertible_mono(monkeypatch):
+    """  
+    If neither direct nor color‐convertible, but a mono format is convertible → pick that.    """    # fake_intersect returns [] on first (color) call, then raw fmts on second (mono) call
+    call_sequence = []
+    def fake_intersect(fmts, subset):
+        if not call_sequence:
+            call_sequence.append(True)
+            return []
+        return list(fmts)
+
+    monkeypatch.setattr(vimba_rap3, 'intersect_pixel_formats', fake_intersect)
+
+    fmt = DummyFormat([opencv_display_format])
+    calls = []
+    class Cam:
+        def get_pixel_formats(self):
+            return [fmt]
+        def set_pixel_format(self, fmt):
+            calls.append(fmt)
+
+    cam = Cam()
+    setup_pixel_format(cam)
+    assert calls == [fmt]
+
+def test_setup_pixel_format_no_compatible(monkeypatch, caplog, capsys):
+    """  
+    If there’s no direct support and no convertible formats → abort.    """    # force both color and mono intersects to return empty
+    monkeypatch.setattr(vimba_rap3, 'intersect_pixel_formats',
+                        lambda fmts, subset: [])
+
+    class Cam:
+        def get_pixel_formats(self):
+            return []
+
+    caplog.set_level(logging.ERROR)
+    with pytest.raises(SystemExit) as exc:
+        setup_pixel_format(Cam())
+    assert exc.value.code == 1
+
+    out = capsys.readouterr().out
+    assert "Camera does not support an OpenCV compatible format. Abort." in out
+
+    assert any(
+        rec.levelno == logging.ERROR and
+        "Camera does not support an OpenCV compatible format. Abort." in rec.getMessage()
+        for rec in caplog.records
+    )
