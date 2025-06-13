@@ -152,6 +152,14 @@ class FakeVmbSystem:
 # ——— Fixtures ——— #
 
 @pytest.fixture(autouse=True)
+def reset_processsave_globals():
+    # Ensure a clean slate for each test
+    vimba_rap3.mode        = 99
+    vimba_rap3.savedframes = 42
+    vimba_rap3.save_max    = 100
+    yield
+
+@pytest.fixture(autouse=True)
 def reset_processcommand_globals(monkeypatch):
     # Always start tests with a clean slate
     vimba_rap3.number_of_wells = 2
@@ -632,3 +640,42 @@ def test_processcommand_no_match_does_nothing():
     assert cv.resize_calls  == []
     assert cv.move_calls    == []
 
+#-- processsave() tests --#
+
+@pytest.mark.parametrize("cmd_str, expected_max", [
+    ("save=10",               10),
+    ("save=  20  ",           20),   # trims whitespace
+    ("prefix=ignored=30",     30),   # rfind picks last “=”
+    ("save=0",                 0),
+    ("save=-5",               -5),   # negative allowed by int()
+])
+def test_processsave_parses_and_sets_globals(cmd_str, expected_max):
+    """
+    processsave should set:
+      mode       → 0
+      savedframes→ 0
+      save_max   → integer parsed after last '='
+    """
+    vimba_rap3.processsave(None, cmd_str)
+    assert vimba_rap3.mode        == 0
+    assert vimba_rap3.savedframes == 0
+    assert vimba_rap3.save_max    == expected_max
+
+#-- array_in_array() tests --#
+
+def test_array_in_array_basic_placement_only_arrays():
+    # a1 is a 5×5×3 zero‐array
+    a1 = np.zeros((5, 5, 3), dtype=int)
+    # a2 is a 2×3×3 ramp
+    a2 = np.arange(2*3*3).reshape((2, 3, 3))
+
+    # place it at offset (1,2)
+    array_in_array(a1, a2, 1, 2)
+
+    # the region [1:3,2:5,:] must exactly match a2
+    assert np.array_equal(a1[1:1+2, 2:2+3, :], a2)
+
+    # everything else should remain zero
+    mask = np.ones_like(a1, dtype=bool)
+    mask[1:3, 2:5, :] = False
+    assert np.all(a1[mask] == 0)

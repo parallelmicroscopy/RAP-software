@@ -421,6 +421,9 @@ def processsave(cv,str):
     savedframes=0
     save_max=val
 
+"""
+never used
+
 def processmath(cv,str):
     global number_of_wells
     global process_well
@@ -434,11 +437,15 @@ def processmath(cv,str):
     else:
        process_well=-1
        print(process_well)
+"""
 
+"""
+never used
 
 #combine multiple images into a single 2D image grid
 def concat_vh(cv2,list_2d):
     return cv2.vconcat([cv2.hconcat(list_h)for list_h in list_2d])
+"""
 
 #inserts 2D a2 into larger 2D ai
 def array_in_array(a1,a2,x,y):
