@@ -9,6 +9,7 @@ import logging
 import vimba_rap3
 from vimba_rap3 import *
 from vmbpy import *
+import types
 
 # ——— Shared Dummy Classes ——— #
 
@@ -679,3 +680,5 @@ def test_array_in_array_basic_placement_only_arrays():
     mask = np.ones_like(a1, dtype=bool)
     mask[1:3, 2:5, :] = False
     assert np.all(a1[mask] == 0)
+
+#-- checkkeypress() tests --#
