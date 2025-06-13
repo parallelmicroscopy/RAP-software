@@ -12,7 +12,19 @@ from vmbpy import *
 
 # ——— Shared Dummy Classes ——— #
 
-# ——— shared dummy cam for parsefile ——— #
+
+class DummyCV:
+    def __init__(self):
+        self.destroy_calls = 0
+        self.resize_calls  = []
+        self.move_calls    = []
+    def destroyAllWindows(self):
+        self.destroy_calls += 1
+    def resizeWindow(self, title, w, h):
+        self.resize_calls.append((title, w, h))
+    def moveWindow(self, title, x, y):
+        self.move_calls.append((title, x, y))
+
 class DummyCamExposure:
     def __init__(self):
         self.ExposureAuto = SimpleNamespace(set_calls=[])
@@ -139,7 +151,13 @@ class FakeVmbSystem:
 
 # ——— Fixtures ——— #
 
-
+@pytest.fixture(autouse=True)
+def reset_processcommand_globals(monkeypatch):
+    # Always start tests with a clean slate
+    vimba_rap3.number_of_wells = 2
+    vimba_rap3.screenres       = [1000, 1000]
+    vimba_rap3.alliedxy        = [100, 200]
+    yield
 
 @pytest.fixture(autouse=True)
 def stub_dummy_cam_methods(monkeypatch):
@@ -539,3 +557,78 @@ def test_makepanels_various_sizes(xdim, ydim, expected):
 
     # after calling, frame_array must match the expected 2D grid
     assert vimba_rap3.frame_array == expected
+
+#-- parsecommand() tests --#
+
+@pytest.mark.parametrize("s, cmd, expected", [
+    # pure‐digits → parsed
+    ("wells=123",       "wells=",  (0,   123)),
+    ("foo wells=321",   "wells=",  (4,   321)),
+    ("mode=  15",       "mode=",   (0,    15)),
+    # keyword not present → both -1
+    ("random text",     "wells=",  (-1,  -1)),
+])
+def test_parsecommand_behavior(s, cmd, expected):
+    assert parsecommand(s, cmd) == expected
+
+#-- processcommand() tests --#
+
+
+def test_processcommand_wells_changed_triggers_destroy(tmp_path):
+    cv = DummyCV()
+    # starting number_of_wells is 2
+    assert vimba_rap3.number_of_wells == 2
+
+    # call with wells=5 → should update global and call destroy
+    vimba_rap3.processcommand(cv, "wells=5")
+    assert vimba_rap3.number_of_wells == 5
+    assert cv.destroy_calls == 1
+
+def test_processcommand_wells_same_does_nothing():
+    cv = DummyCV()
+    # set wells to 3
+    vimba_rap3.number_of_wells = 3
+
+    # call again with the same value
+    vimba_rap3.processcommand(cv, "wells=3")
+    # no change, no destroy
+    assert vimba_rap3.number_of_wells == 3
+    assert cv.destroy_calls == 0
+
+def test_processcommand_tile_resizes_and_moves_windows():
+    cv = DummyCV()
+
+    # ensure number_of_wells > 0
+    vimba_rap3.number_of_wells = 3
+    # alliedxy = [100,200], screenres = [1000,1000] (from fixture)
+
+    # now issue tile=2 → should call resize/move 3×
+    vimba_rap3.processcommand(cv, "tile=2")
+
+    # exactly one resize + one move per well:
+    assert len(cv.resize_calls) == 3
+    assert len(cv.move_calls)   == 3
+
+    # each resize call got (title, width=2, height=int(200/ (100/2) )==4)
+    # and each move call got x positions 0,2,4 and y=0
+    for i, ((title_r, w, h), (title_m, x, y)) in enumerate(zip(cv.resize_calls, cv.move_calls)):
+        # title_r and title_m should match windowtitle.format(i)
+        expected_title = vimba_rap3.windowtitle.format(i)
+        assert title_r == expected_title
+        assert title_m == expected_title
+
+        assert w == 2
+        assert h == int(vimba_rap3.alliedxy[1] / (vimba_rap3.alliedxy[0] / 2))
+        # x positions should step by w each time; y stays 0 because screenres is big
+        assert x == i * w
+        assert y == 0
+
+def test_processcommand_no_match_does_nothing():
+    cv = DummyCV()
+    # neither "wells=" nor "tile=" in the string
+    vimba_rap3.processcommand(cv, "foo=1")
+    # no side‐effects at all
+    assert cv.destroy_calls == 0
+    assert cv.resize_calls  == []
+    assert cv.move_calls    == []
+
