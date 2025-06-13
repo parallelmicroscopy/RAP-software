@@ -12,6 +12,16 @@ from vmbpy import *
 
 # ——— Shared Dummy Classes ——— #
 
+# ——— shared dummy cam for parsefile ——— #
+class DummyCamExposure:
+    def __init__(self):
+        self.ExposureAuto = SimpleNamespace(set_calls=[])
+        self.ExposureTime = SimpleNamespace(set_calls=[])
+    def _record_auto(self, val):
+        self.ExposureAuto.set_calls.append(val)
+    def _record_time(self, val):
+        self.ExposureTime.set_calls.append(val)
+
 class DummyFrameIncomplete:
     """A frame whose status is never Complete."""
     def get_status(self):
@@ -128,6 +138,17 @@ class FakeVmbSystem:
         return self._by_id
 
 # ——— Fixtures ——— #
+
+
+
+@pytest.fixture(autouse=True)
+def stub_dummy_cam_methods(monkeypatch):
+    """Attach .set() to our DummyCamExposure components."""
+    def attach(cam):
+        cam.ExposureAuto.set = cam._record_auto
+        cam.ExposureTime.set = cam._record_time
+        return cam
+    return attach
 
 @pytest.fixture(autouse=True)
 def reset_current_save_dir():
@@ -394,3 +415,127 @@ def test_setup_pixel_format_no_compatible(monkeypatch, caplog, capsys):
         "Camera does not support an OpenCV compatible format. Abort." in rec.getMessage()
         for rec in caplog.records
     )
+
+# --class handler tests-- #
+
+def test_handler_skips_incomplete_frame():
+    """
+    If frame.get_status() != Complete, Handler should do nothing:    no increment of frnum, no queue put, no cam.queue_frame().    """
+    handler = Handler(cv2=None)
+    cam = DummyCamQueue()
+    frame = DummyFrameIncomplete()
+
+    handler(cam, None, frame)
+
+    # frnum stays at 0
+    assert handler.frnum == 0
+    # nothing was queued for display
+    assert handler.display_queue.empty()
+    # camera never re-queued the frame
+    assert cam.queued == []
+
+def test_handler_puts_direct_format():
+    """
+    Complete frames already in opencv_display_format should be    enqueued directly and re-queued back to the camera.    """
+    handler = Handler(cv2=None)
+    cam = DummyCamQueue()
+    frame = DummyFrameDirect()
+
+    handler(cam, None, frame)
+
+    # Handler should have incremented its frame counter
+    assert handler.frnum == 1
+
+    (img, queued_fn), num = handler.get_image()
+    assert img == "raw_image"
+    assert queued_fn == 1
+    assert num == 1
+
+    # and the original frame object is returned to the camera
+    assert cam.queued == [frame]
+
+def test_handler_converts_format():
+    """
+    If the frame isn’t already in opencv_display_format, Handler    should call frame.convert_pixel_format(...) then enqueue.    """
+    converted_frame = DummyFrameDirect()  # this will be returned by convert_pixel_format
+    frame = DummyFrameConvert(converted_frame)
+
+    handler = Handler(cv2=None)
+    cam = DummyCamQueue()
+
+    handler(cam, None, frame)
+
+    # frnum was incremented
+    assert handler.frnum == 1
+
+    # get_image should yield the converted image
+    (img, queued_fn), num = handler.get_image()
+    assert img == "converted_image"
+    assert queued_fn == 1
+    assert num == 1
+
+    # but the camera gets the *original* frame re-queued
+    assert cam.queued == [frame]
+
+def test_handler_prints_queue_full_and_status_message(capsys):
+    """
+    When verbose=1 and the internal queue is full, Handler should print    'queue full'. Also every 500th frame prints a status line starting with '.py.'.    """
+    handler = Handler(cv2=None)
+    handler.verbose = 1
+
+    # stub out display_queue to simulate full() always True
+    handler.display_queue = SimpleNamespace(
+        full=lambda: True,
+        put=lambda item, block: None
+    )
+
+    # Create a frame that is complete and in direct format
+    frame = DummyFrameDirect()
+    cam = DummyCamQueue()
+
+    # First call: frnum starts at 0, so frnum%500 == 0 → status message printed
+    handler(cam, None, frame)
+
+    out = capsys.readouterr().out
+    assert "queue full" in out
+    assert ".py." in out and "acquired with" in out
+
+# -- parsefile() tests -- #
+def test_parsefile_sets_auto_and_time(tmp_path, stub_dummy_cam_methods, monkeypatch):
+    # 1) Write a RAPcommand.txt in a fresh tmp dir
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "RAPcommand.txt").write_text("12345\n")
+
+    # 2) Create our dummy and hook in the .set() recorders
+    cam = stub_dummy_cam_methods(DummyCamExposure())
+
+    # 3) Call parsefile → should print and then set ExposureAuto to 'Off', ExposureTime to 12345
+    parsefile(cam)
+
+    # 4) Verify
+    assert cam.ExposureAuto.set_calls == ['Off']
+    assert cam.ExposureTime.set_calls == [12345]
+
+# ——— makepanels() tests ——— #
+
+@pytest.mark.parametrize("xdim, ydim, expected", [
+    (1, 1, [[0]]),
+    (2, 2, [[0, 1],
+            [0, 1]]),
+    (3, 1, [[0, 1, 2]]),
+    (1, 3, [[0],
+            [0],
+            [0]]),
+    (4, 3, [[0, 1, 2, 3],
+            [0, 1, 2, 3],
+            [0, 1, 2, 3]]),
+])
+def test_makepanels_various_sizes(xdim, ydim, expected):
+    # reset any old data
+    vimba_rap3.frame_array = None
+
+    # call under test
+    vimba_rap3.makepanels(xdim, ydim)
+
+    # after calling, frame_array must match the expected 2D grid
+    assert vimba_rap3.frame_array == expected
