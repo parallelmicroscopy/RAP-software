@@ -616,6 +616,8 @@ def add_stdin_input(stdin_input_queue,stdin_command_queue):
         else:
             stdin_input_queue.put(ch)
 
+""""
+never used
 
 def maybechecknodejs_stdin(cv2,num1,num2):
     return 0
@@ -659,6 +661,7 @@ def maybechecknodejs_localhost(cv2,num1,num2):
         except Exception as e:
             #print(e)
             pass     
+"""
 
 # if in save mode, save a number of images to specified location
 def maybesaveimage(cv2,display,num):

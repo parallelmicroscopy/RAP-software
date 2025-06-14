@@ -10,9 +10,45 @@ import vimba_rap3
 from vimba_rap3 import *
 from vmbpy import *
 import types
+from queue import Queue
+import queue
 
 # ——— Shared Dummy Classes ——— #
 
+
+
+# A minimal stub for cv2 to record calls
+class DummyCV2:
+    WINDOW_NORMAL = 100  # arbitrary placeholder
+
+    def __init__(self):
+        self.named_calls = []  # tuples of (window_title, flag)
+        self.move_calls  = []  # tuples of (window_title, x, y)
+
+    def namedWindow(self, title, flag):
+        self.named_calls.append((title, flag))
+
+    def moveWindow(self, title, x, y):
+        self.move_calls.append((title, x, y))
+
+class DummyCV2Show(DummyCV2):
+    def __init__(self):
+        super().__init__()
+        self.shown = []  # record (title, image) tuples
+
+    def imshow(self, title, img):
+        self.shown.append((title, img))
+
+class FakeStdin:
+    def __init__(self, data):
+        self.data = list(data)
+    def read(self, n):
+        if self.data:
+            return self.data.pop(0)
+        raise EOFError
+
+class DummyCam:
+    pass
 
 class DummyCV:
     def __init__(self):
@@ -151,6 +187,31 @@ class FakeVmbSystem:
         return self._by_id
 
 # ——— Fixtures ——— #
+
+@pytest.fixture(autouse=True)
+def reset_maybesaveimage_globals():
+    # Ensure a clean slate before each test
+    vimba_rap3.SAVETOGGLE   = 0
+    vimba_rap3.savedframes  = 0
+    vimba_rap3.save_max     = 3
+    yield
+
+@pytest.fixture(autouse=True)
+def reset_js_input_flag():
+    import vimba_rap3
+    vimba_rap3.js_input_started = False
+    yield
+    vimba_rap3.js_input_started = False
+@pytest.fixture(autouse=True)
+def reset_js_globals(monkeypatch):
+    vimba_rap3.cancel_main_loop = 0
+    vimba_rap3.cancel_save      = 0
+    vimba_rap3.mode             = -1
+    vimba_rap3.number_of_wells  = 0
+    vimba_rap3.savedframes      = 0
+    vimba_rap3.save_max         = 0
+    vimba_rap3.SAVETOGGLE       = 0
+    yield
 
 @pytest.fixture(autouse=True)
 def reset_processsave_globals():
@@ -682,3 +743,380 @@ def test_array_in_array_basic_placement_only_arrays():
     assert np.all(a1[mask] == 0)
 
 #-- checkkeypress() tests --#
+
+@pytest.mark.parametrize("key, expect_destroy, expect_parse, expect_ret", [
+    (13,  True,  False, -1),   # Enter
+    (ord("r"), False, True,   0),   # 'r'
+    (42,  False, False,  0),   # anything else
+])
+def test_checkkeypress_param(key, expect_destroy, expect_parse, expect_ret, monkeypatch):
+    # 1) ensure there's a module‐level cam for parsefile(cam) to pick up
+    monkeypatch.setattr(vimba_rap3, "cam", "MY_CAMERA", raising=False)
+
+    # 2) stub out parsefile so it just records calls
+    parse_calls = []
+    monkeypatch.setattr(vimba_rap3, "parsefile", lambda cam_arg: parse_calls.append(cam_arg))
+
+    # 3) build a tiny fake cv
+    calls = []
+    cv = types.SimpleNamespace(
+        waitKey=lambda t: key,
+        destroyAllWindows=lambda: calls.append("destroy")
+    )
+
+    # 4) invoke
+    ret = checkkeypress(cv, None)
+
+    # 5) assertions
+    assert ret == expect_ret
+    assert (len(calls) > 0) == expect_destroy
+    assert (parse_calls == ["MY_CAMERA"]) == expect_parse
+
+# -- start_save() tests --#
+
+def test_start_save_resets_and_toggles_and_changes_dir_and_logs(monkeypatch, caplog, tmp_path):
+    # 1) Prepare: push savedframes to a non-zero, and SAVETOGGLE off
+    vimba_rap3.savedframes = 7
+    vimba_rap3.SAVETOGGLE   = 0
+
+    # 2) Capture INFO logs
+    caplog.set_level(logging.INFO)
+
+    # 3) Stub os.chdir so it doesn't actually move us around
+    called = []
+    monkeypatch.setattr(os, "chdir", lambda p: called.append(p))
+
+    # 4) Call under test
+    folder = str(tmp_path / "my_output_folder")
+    vimba_rap3.start_save(folder)
+
+    # 5) Assert savedframes was reset
+    assert vimba_rap3.savedframes == 0
+
+    # 6) Assert SAVETOGGLE was flipped on
+    assert vimba_rap3.SAVETOGGLE == 1
+
+    # 7) Assert os.chdir was called exactly once with our folder
+    assert called == [folder]
+
+    # 8) Assert a log record was emitted mentioning our folder
+    assert any(
+        "startsave called, with {}".format(folder) in rec.getMessage()
+        for rec in caplog.records
+    )
+
+# -- stop_save() tests -- #
+
+def test_stop_save_turns_off_savetoggle_and_logs(caplog):
+    # 1) Arrange: turn SAVETOGGLE on
+    vimba_rap3.SAVETOGGLE = 1
+
+    # 2) Capture INFO‐level logs
+    caplog.set_level(logging.INFO)
+
+    # 3) Act
+    vimba_rap3.stop_save()
+
+    # 4) Assert SAVETOGGLE was reset to 0
+    assert vimba_rap3.SAVETOGGLE == 0
+
+    # 5) Assert an INFO‐level record “stopsave called” was emitted
+    assert any(
+        "stopsave called" in rec.getMessage() and rec.levelno == logging.INFO
+        for rec in caplog.records
+    )
+
+# -- process_js_command() tests -- #
+
+# ——— Helper to capture stdout and logs ——— #
+def capture(monkeypatch):
+    out = []
+    monkeypatch.setattr(sys, "stdout", type("O", (), {"write": lambda _self, s: out.append(s), "flush": lambda _self: None})())
+    return out
+
+# ——— 1) loadcamerasettings / loadcamera ——— #
+def test_process_js_loadcamera_requires_path(monkeypatch, capsys):
+    called = []
+    monkeypatch.setattr(vimba_rap3, "load_camera_settings", lambda cam, p: called.append(p))
+    process_js_command("loadcamera", DummyCam())
+    out = capsys.readouterr().out
+    assert "Error - require a path to an xml file" in out
+    assert called == []
+
+def test_process_js_loadcamera_ok(monkeypatch, caplog, capsys):
+    called = []
+    monkeypatch.setattr(vimba_rap3, "load_camera_settings", lambda cam, p: called.append(p))
+    caplog.set_level(logging.INFO)
+    process_js_command("loadcamerasettings,  foo.xml  ", DummyCam())
+    assert called == ["foo.xml"]
+    out = capsys.readouterr().out
+    assert ".py. processing command loadcamerasettings" in out
+    assert any("process_js_command understood = loadcamerasettings" in r.getMessage() for r in caplog.records)
+
+# ——— 2) trigger ——— #
+def test_process_js_trigger_true_false_and_invalid(monkeypatch, capsys, caplog):
+    called = []
+    monkeypatch.setattr(vimba_rap3, "load_camera_settings", lambda cam, p: called.append(p))
+    # true
+    process_js_command("trigger, true", DummyCam())
+    assert called[-1] == vimba_rap3.defaultTriggerConfigfile
+    # false
+    process_js_command("trigger,0", DummyCam())
+    assert called[-1] == vimba_rap3.defaultFreerunConfigfile
+    # invalid
+    process_js_command("trigger, maybe", DummyCam())
+    out = capsys.readouterr().out
+    assert "Error - true/false argument not parsed" in out
+
+# ——— 3) framerate, gain, exposure ——— #
+def test_process_js_framerate_gain_exposure(monkeypatch):
+    fr, gn, ex = [], [], []
+    monkeypatch.setattr(vimba_rap3, "set_framerate", lambda c,v: fr.append(v))
+    monkeypatch.setattr(vimba_rap3, "set_gain",      lambda c,v: gn.append(v))
+    monkeypatch.setattr(vimba_rap3, "set_exposure",  lambda c,v: ex.append(v))
+
+    cam = DummyCam()
+    process_js_command("framerate, 30", cam)
+    assert fr[-1] == 30.0
+
+    process_js_command("gain, -5", cam)
+    assert gn[-1] == 0.0
+    process_js_command("gain, 50", cam)
+    assert gn[-1] == 45.0
+
+    process_js_command("exposure, 10", cam)
+    assert ex[-1] == 20.0
+    process_js_command("exposure, 2000000", cam)
+    assert ex[-1] == 1000000.0
+
+# ——— 4) wells, jmessage, quit ——— #
+def test_process_js_wells_jmessage_quit(monkeypatch, capsys):
+    # wells clamp
+    process_js_command("wells, 0", None)
+    assert vimba_rap3.number_of_wells == 1
+    process_js_command("wells, 30", None)
+    assert vimba_rap3.number_of_wells == 24
+
+    # jmessage
+    _ = capsys.readouterr()
+    process_js_command("jmessage", None)
+    out = capsys.readouterr().out
+    assert "Generic message received" in out
+
+    # quit
+    process_js_command("quit", None)
+    assert vimba_rap3.cancel_main_loop == 1
+
+# ——— 5) startsave, stopsave ——— #
+def test_process_js_startstop_save(monkeypatch):
+    ss, sp = [], []
+    # stub out create_folder/start_save/stop_save
+    monkeypatch.setattr(vimba_rap3, "create_folder", lambda p: setattr(vimba_rap3, "currentSaveDirectory", "/tmp/X"))
+    monkeypatch.setattr(vimba_rap3, "start_save", lambda p: ss.append(p))
+    monkeypatch.setattr(vimba_rap3, "stop_save",  lambda : sp.append(True))
+
+    # startsave no-arg → uses currentSaveDirectory
+    process_js_command("startsave", DummyCam())
+    assert ss[-1] == vimba_rap3.currentSaveDirectory
+    # startsave with arg
+    process_js_command("startsave, custom", DummyCam())
+    assert ss[-1] == "custom"
+    # stopsave
+    process_js_command("stopsave", DummyCam())
+    assert sp == [True]
+
+# ——— 6) free, mode, savedir, unknown ——— #
+def test_process_js_free_mode_savedir_unknown(monkeypatch, caplog, capsys):
+    lc = []
+    monkeypatch.setattr(vimba_rap3, "load_camera_settings", lambda c,p: lc.append(p))
+    caplog.set_level(logging.INFO)
+
+    process_js_command("free", None)
+    assert lc[-1] == vimba_rap3.defaultFreerunConfigfile
+
+    process_js_command("mode,2", None)
+    assert vimba_rap3.mode == 2
+
+    process_js_command("savedir, /var/tmp", None)
+    assert any("/var/tmp" in rec.getMessage() for rec in caplog.records)
+
+    # unknown
+    _ = capsys.readouterr()
+    process_js_command("foo", None)
+    out = capsys.readouterr().out
+    assert "command foo not understood" in out
+
+# -- add_stdin_input() tests -- #
+
+def test_add_stdin_input_single_command(monkeypatch):
+    """
+    Input "<hello>" should queue "hello" as one command, and leave the input queue empty.
+    """
+    stdin = FakeStdin("<hello>")
+    monkeypatch.setattr(sys, "stdin", stdin)
+
+    iq, cq = Queue(), Queue()
+    with pytest.raises(EOFError):
+        add_stdin_input(iq, cq)  # It will raise EOFError once FakeStdin is exhausted
+
+    # The command queue should have exactly one entry "hello"
+    assert cq.get_nowait() == "hello"
+    # The raw input-queue should be empty
+    assert iq.empty()
+
+def test_add_stdin_input_partial_no_close(monkeypatch):
+    """
+    Input without a closing '>' should never emit a command, but all non-'<' chars go into the input queue.
+    """
+    stdin = FakeStdin("abc<foo")
+    monkeypatch.setattr(sys, "stdin", stdin)
+
+    iq, cq = Queue(), Queue()
+    with pytest.raises(EOFError):
+        add_stdin_input(iq, cq)
+
+    # No complete command was emitted
+    assert cq.empty()
+    # Every character except the '<' was pushed into iq, and none removed
+    assert list(iq.queue) == ["a", "b", "c", "f", "o", "o"]
+
+def test_add_stdin_input_multiple_commands(monkeypatch):
+    """
+    Multiple "<a><b>" sequences should produce two commands "a" and "b", and leave iq empty.
+    """
+    stdin = FakeStdin("<a><b>")
+    monkeypatch.setattr(sys, "stdin", stdin)
+
+    iq, cq = Queue(), Queue()
+    with pytest.raises(EOFError):
+        add_stdin_input(iq, cq)
+
+    # We should have seen exactly ["a", "b"] in the command queue
+    assert list(cq.queue) == ["a", "b"]
+    # And no leftover characters in the input queue
+    assert iq.empty()
+
+# -- maybesaveimage() tests -- #
+
+def test_maybesaveimage_does_nothing_when_toggle_off(tmp_path):
+    """If SAVETOGGLE==0, nothing should be written and counters untouched."""
+    calls = []
+    dummy_cv2 = type("CV", (), {"imwrite": lambda self, fn, img: calls.append((fn, img))})()
+    vimba_rap3.SAVETOGGLE = 0
+    vimba_rap3.savedframes = 5
+    vimba_rap3.save_max    = 10
+
+    # call with toggle off
+    vimba_rap3.maybesaveimage(dummy_cv2, display="IMGDATA", num=7)
+
+    # no write, no counter change, toggle stays off
+    assert calls == []
+    assert vimba_rap3.savedframes == 5
+    assert vimba_rap3.SAVETOGGLE   == 0
+
+def test_maybesaveimage_writes_and_increments_below_max(tmp_path):
+    """With SAVETOGGLE==1 and savedframes+1 < save_max: write once, counter++, toggle stays on."""
+    calls = []
+    dummy_cv2 = type("CV", (), {"imwrite": lambda self, fn, img: calls.append((fn, img))})()
+    vimba_rap3.SAVETOGGLE = 1
+    vimba_rap3.savedframes = 0
+    vimba_rap3.save_max    = 2
+
+    # first save: 0→1 (<2)
+    vimba_rap3.maybesaveimage(dummy_cv2, display="DATA1", num=0)
+    assert calls == [("img000000000.tif", "DATA1")]
+    assert vimba_rap3.savedframes == 1
+    assert vimba_rap3.SAVETOGGLE   == 1
+
+    # second save: 1→2 (==2, still < save_max? actually ==, toggle off only when >=)
+    calls.clear()
+    vimba_rap3.maybesaveimage(dummy_cv2, display="DATA2", num=1)
+    assert calls == [("img000000001.tif", "DATA2")]
+    assert vimba_rap3.savedframes == 2
+    # now savedframes == save_max, so toggle should flip off
+    assert vimba_rap3.SAVETOGGLE   == 0
+
+# -- setupdisplaywindows() tests -- #
+
+def test_setupdisplaywindows_24_grid():
+    """
+    When number_of_wells==24, we should get a 4×6 grid:
+      - 24 calls to namedWindow with titles windowtitle.format(0..23)
+      - 24 calls to moveWindow with x=j*280+1600, y=i*230
+      - return list of those 24 titles in order
+    """
+    cv2 = DummyCV2()
+
+    # Use a simple windowtitle so we can predict it
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setenv("dummy", "unused")  # no-op, just to grab monkeypatch API
+    # Actually patch the module globals directly:
+    vimba_rap3.windowtitle = "W{}"
+    # alliedxy not used in the 24-grid branch
+
+    titles = setupdisplaywindows(cv2, 24)
+
+    # Expect titles == ["W0", "W1", ..., "W23"]
+    expected_titles = [f"W{i}" for i in range(24)]
+    assert titles == expected_titles
+
+    # Check namedWindow calls
+    assert [t for t, _ in cv2.named_calls] == expected_titles
+    # Check moveWindow geometry
+    expected_moves = []
+    c = 0
+    for i in range(4):
+        for j in range(6):
+            expected_moves.append((f"W{c}", j*280 + 1600, i*230))
+            c += 1
+    assert cv2.move_calls == expected_moves
+
+    monkeypatch.undo()
+
+
+@pytest.mark.parametrize("n_wells,expected_titles,expected_moves", [
+    # 1 well → one window at (0,0)
+    (1, ["W0"], [("W0", 0, 0)]),
+    # 3 wells → three windows at x offsets 0,624,0 (given alliedxy=[816,624])
+    (3,
+     ["W0", "W1", "W2"],
+     [("W0", 0, 0),
+      ("W1", 0, 624),
+      ("W2", 0, 0)]),
+])
+def test_setupdisplaywindows_small(monkeypatch, n_wells, expected_titles, expected_moves):
+    """
+    For number_of_wells ≠ 24, uses the 2×2/3×2 tiling:
+      xi = w%2, yi = (w//3)%2
+      x = yi*alliedxy[0], y = xi*alliedxy[1]
+    """
+    cv2 = DummyCV2()
+    # Make alliedxy predictable
+    vimba_rap3.alliedxy = [816, 624]
+    vimba_rap3.windowtitle = "W{}"
+
+    titles = setupdisplaywindows(cv2, n_wells)
+    assert titles == expected_titles
+    # namedWindow calls in order
+    assert [t for t, _ in cv2.named_calls] == expected_titles
+    # moveWindow calls match expected
+    assert cv2.move_calls == expected_moves
+
+# -- maybeshowimage() tests -- #
+
+@pytest.mark.parametrize("num,n_wells,expected_idx", [
+    (5, 4, 1),    # 5 % 4 == 1
+    (0, 4, 0),    # 0 % 4 == 0
+    (7, 3, 1),    # 7 % 3 == 1
+])
+def test_maybeshowimage_wraps_and_displays_correct_window(num, n_wells, expected_idx):
+    cv2 = DummyCV2Show()
+    # pick a template that makes titles obvious
+    vimba_rap3.windowtitle = "Win{}"
+
+    vimba_rap3.maybeshowimage(cv2, display="FRAME", num=num, number_of_wells=n_wells)
+
+    # should have exactly one imshow call with title Win{expected_idx}
+    assert cv2.shown == [(f"Win{expected_idx}", "FRAME")]
+
+# -- main() tests --#
