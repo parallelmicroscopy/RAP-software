@@ -11,6 +11,7 @@ from vimba_rap3 import *
 from vmbpy import *
 import types
 from queue import Queue
+import time
 import queue
 
 # ——— Shared Dummy Classes ——— #
@@ -1187,3 +1188,110 @@ def test_main_skips_preamble_when_slave_mode_one(monkeypatch, capsys):
 
     out = capsys.readouterr().out
     assert "/// vimba opencv" not in out
+
+def _install_common_stubs(monkeypatch, tmp_path, calls):
+    """Helper to stub out everything except the very streaming loop itself."""
+
+    # 1) parse_args → (mode, wells, slave_mode)
+    monkeypatch.setattr(vimba_rap3, "parse_args", lambda: (2, 4, 0))
+
+    # 2) savedirectory → point at a real dir so os.chdir() works
+    monkeypatch.setattr(vimba_rap3, "savedirectory", str(tmp_path))
+
+    # 3) default freerun config file
+    monkeypatch.setattr(vimba_rap3, "defaultFreerunConfigfile", "freerun.xml")
+
+    # 4) stub all the camera‐setup helpers
+    monkeypatch.setattr(vimba_rap3, "setup_camera",    lambda cam: calls.append("setup_camera"))
+    monkeypatch.setattr(vimba_rap3, "load_camera_settings",
+                        lambda cam, f: calls.append(f"load_settings:{f}"))
+    monkeypatch.setattr(vimba_rap3, "setup_pixel_format",
+                        lambda cam: calls.append("setup_pixel_format"))
+
+    # 5) Handler → fake handler whose get_image returns a dummy image
+    class FakeHandler:
+        def __init__(self, cv2obj):
+            calls.append("handler_ctor")
+        def get_image(self):
+            # return ((display, rnum), cnum)
+            return (("IMG", 1), 1)
+    monkeypatch.setattr(vimba_rap3, "Handler", FakeHandler)
+
+    # 6) Display / saving stubs
+    monkeypatch.setattr(vimba_rap3, "maybesaveimage",
+                        lambda cv2, img, num: calls.append(f"maybesave:{num}"))
+    monkeypatch.setattr(vimba_rap3, "maybeshowimage",
+                        lambda cv2, img, num: calls.append(f"maybeshow:{num}"))
+    monkeypatch.setattr(vimba_rap3, "checkkeypress",
+                        lambda cv2, cnum: 1)  # force exit immediately
+
+    # 7) process_js_command stub so start‐loop runs once
+    monkeypatch.setattr(vimba_rap3, "process_js_command",
+                        lambda cmd, cam: calls.append(f"process_js:{cmd}"))
+
+    # 8) setupdisplaywindows: only called if mode==1 (not in these tests)
+    monkeypatch.setattr(vimba_rap3, "setupdisplaywindows",
+                        lambda cv2, wells: calls.append(f"setup_windows:{wells}") or [])
+
+
+def test_streaming_loop_runs_one_round_and_exits(monkeypatch, tmp_path):
+    calls = []
+
+    _install_common_stubs(monkeypatch, tmp_path, calls)
+
+    # 🌟 PRE‐SEED THE COMMAND QUEUE 🌟
+    vimba_rap3.stdin_command_queue.put("startcamera")
+    vimba_rap3.stdin_command_queue.put("boom")
+
+    class FakeCam:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def start_streaming(self, handler, buffer_count):
+            calls.append(f"start_streaming:{buffer_count}")
+            raise SystemExit(99)
+        def stop_streaming(self):
+            calls.append("stop_streaming")
+
+    monkeypatch.setattr(vimba_rap3.VmbSystem, "get_instance",
+                        classmethod(lambda cls: FakeCam()))
+    monkeypatch.setattr(vimba_rap3, "get_camera",
+                        lambda cid: FakeCam())
+
+    with pytest.raises(SystemExit) as exc:
+        vimba_rap3.main()
+    assert exc.value.code == 99
+
+
+
+def test_streaming_loop_skips_waitloop_if_first_command_is_start(monkeypatch, tmp_path):
+    calls = []
+
+    _install_common_stubs(monkeypatch, tmp_path, calls)
+    while not vimba_rap3.stdin_command_queue.empty():
+        vimba_rap3.stdin_command_queue.get()
+
+    # Put “startcamera” right away so the wait-for-start loop never calls process_js
+    vimba_rap3.stdin_command_queue.put("startcamera")
+
+    class FakeCam2:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def start_streaming(self, handler, buffer_count):
+            calls.append("start_streaming_immediate")
+            # immediately break
+            raise SystemExit
+        def stop_streaming(self):
+            calls.append("stoped")
+    monkeypatch.setattr(vimba_rap3.VmbSystem, "get_instance",
+                        classmethod(lambda cls: FakeCam2()))
+    monkeypatch.setattr(vimba_rap3, "get_camera",
+                        lambda cid: FakeCam2())
+
+    with pytest.raises(SystemExit):
+        vimba_rap3.main()
+
+    # since the first queue item was startcamera,
+    # process_js_command should never have been called
+    assert not any(c.startswith("process_js:") for c in calls)
+    assert "start_streaming_immediate" in calls
+    assert "stoped" in calls

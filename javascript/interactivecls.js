@@ -1187,6 +1187,7 @@ function ConnectIfAttached(ports,findstr){
 
 
 //listen to keypresses (live())
-live();
-nextOption(cli_options);
+//live();
+//nextOption(cli_options);
+
 
