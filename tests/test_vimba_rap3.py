@@ -1120,3 +1120,70 @@ def test_maybeshowimage_wraps_and_displays_correct_window(num, n_wells, expected
     assert cv2.shown == [(f"Win{expected_idx}", "FRAME")]
 
 # -- main() tests --#
+
+
+# 1) Too many arguments → parse_args() will abort(code=2, usage=True)
+def test_main_exits_on_too_many_args(monkeypatch, capsys):
+    # Simulate: prog + three extra args
+    monkeypatch.setattr(sys, "argv", ["prog", "1", "2", "3"])
+    with pytest.raises(SystemExit) as exc:
+        main()
+        # parse_args should have called abort(return_code=2, usage=True)
+    assert exc.value.code == 2
+
+    out = capsys.readouterr().out
+    # Usage should have been printed
+    assert "Usage:" in out
+
+
+# 2) Slave-mode == 0 → print preamble, then exit from stubbed camera immediately
+def test_main_prints_preamble_when_slave_mode_zero(monkeypatch, capsys, tmp_path):
+    # stub out the display routines so no real OpenCV windows ever appear
+    monkeypatch.setattr(vimba_rap3, "setupdisplaywindows", lambda *args, **kwargs: [])
+    monkeypatch.setattr(vimba_rap3, "maybeshowimage",     lambda *args, **kwargs: None)
+    # 1) stub out parse_args
+    monkeypatch.setattr(vimba_rap3, "parse_args", lambda: (5,6,0))
+
+    # 2) ***This must be at top‐level inside the test, not indented under FakeSys!***
+    monkeypatch.setattr(vimba_rap3, "savedirectory", str(tmp_path))
+
+    # 3) stub out VmbSystem and get_camera
+    class FakeSys:
+        def __enter__(self): return None
+        def __exit__(self,*a): return False
+
+    monkeypatch.setattr(vimba_rap3.VmbSystem, "get_instance",
+                        classmethod(lambda cls: FakeSys()))
+    monkeypatch.setattr(vimba_rap3, "get_camera",
+                        lambda cid: (_ for _ in ()).throw(SystemExit(7)))
+
+    # 4) now run main—os.chdir(tmp_path) will succeed
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 7
+
+    out = capsys.readouterr().out
+    assert "/// vimba opencv" in out
+
+
+# 3) Slave-mode != 0 → skip preamble entirely, then exit
+def test_main_skips_preamble_when_slave_mode_one(monkeypatch, capsys):
+    # stub out the display routines so no real OpenCV windows ever appear
+    monkeypatch.setattr(vimba_rap3, "setupdisplaywindows", lambda *args, **kwargs: [])
+    monkeypatch.setattr(vimba_rap3, "maybeshowimage",     lambda *args, **kwargs: None)
+    monkeypatch.setattr(vimba_rap3, "parse_args", lambda: (1,1,1))
+    monkeypatch.setattr(os, "chdir", lambda _: None)   # no-op
+
+    class FakeSys:
+        def __enter__(self): return None
+        def __exit__(self,*a): return False
+    monkeypatch.setattr(vimba_rap3.VmbSystem, "get_instance", classmethod(lambda cls: FakeSys()))
+    monkeypatch.setattr(vimba_rap3, "get_camera", lambda cid: (_ for _ in ()).throw(SystemExit(8)))
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 8
+
+    out = capsys.readouterr().out
+    assert "/// vimba opencv" not in out
