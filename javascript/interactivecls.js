@@ -15,7 +15,19 @@ const nexline=require('nexline'); //can convert a stream to an async iterator
 const fs = require('node:fs');
 const { AutoComplete } = require('enquirer');
 const Store = require('data-store'); //provides a simple JSON-backed key/value store on disk
-const { SerialPort } = require('serialport');
+
+
+
+//because of testing
+//const { SerialPort } = require('serialport');
+
+// only load the native addon when NOT in test mode
+const SerialPort = process.env.NODE_ENV === "test"
+  ? null
+  : require("serialport");
+
+
+
 const YAML = require('yaml')
 //const fileDialog = require('file-dialog')
 const { Snippet } = require('enquirer');
@@ -1162,7 +1174,18 @@ var port;
 
 
 //scans and connects to arduino
-SerialPort.list().then(ports=>ConnectIfAttached(ports,"rduino"),err=>console.log(err));
+
+//SerialPort.list().then(ports=>ConnectIfAttached(ports,"rduino"),err=>console.log(err));
+//was replaced with
+if (SerialPort) {
+  SerialPort.list()
+    .then(ports => ConnectIfAttached(ports, "rduino"))
+    .catch(err => console.error(err));
+}
+//to avoid testing issues
+
+
+
 function ConnectIfAttached(ports,findstr){
   arduino_connected=false;
   for (i=0;i<ports.length;i++){
