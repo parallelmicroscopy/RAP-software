@@ -8,7 +8,8 @@
       <sourceFolder url="file://$MODULE_DIR$/data" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/javascript" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/python" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/python_tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/python_tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="false" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11 (RAP)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

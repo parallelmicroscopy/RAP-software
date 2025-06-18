@@ -166,9 +166,16 @@ program.command('show') //prints out a simple x×y grid of coordinate placeholde
   });
 
 //lets commander read arguments
-program.parse();
-const options = program.opts();
+//program.parse();
+//const options = program.opts();
 
+if (require.main === module) {
+  // This block only runs when you execute the file directly
+  program.parse();
+  const options = program.opts();
+  live();
+  nextOption(cli_options);
+}
 
 function load_configuration(configfilename){ //reads a JSON file containing your experiment or LED defaults
   fs.readFile(configfilename, 'utf8', (err, data) => {
@@ -1214,3 +1221,23 @@ function ConnectIfAttached(ports,findstr){
 //nextOption(cli_options);
 
 
+module.exports = {
+  zeroPad,
+  generateLEDList,
+  led_to_arduino_string,
+  assignletter,
+  selectedindex,
+  renderTable,
+  changeCurrentSet,
+  copySetToTable,
+  writeStatus,
+  generateDefaultExperiment,
+  isJSONfile,
+  isDirectory,
+  getfilelist,
+  get_json_filelist,
+  check_file_exists,
+  check_directory_empty,
+  fix_directory_name,
+  make_directory_if_needed,
+};
