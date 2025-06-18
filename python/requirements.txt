@@ -1,0 +1,15 @@
+certifi==2025.4.26
+charset-normalizer==3.4.2
+coverage==7.8.2
+drd-vmbpy==1.0.4
+idna==3.10
+iniconfig==2.1.0
+numpy==2.2.6
+opencv-python==4.11.0.86
+packaging==25.0
+pluggy==1.6.0
+Pygments==2.19.1
+pytest==8.4.0
+pytest-cov==6.1.1
+requests==2.32.3
+urllib3==2.4.0
