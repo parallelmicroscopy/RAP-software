@@ -77,7 +77,7 @@ class experiment{ //for holding experiment configurations
 }
 
 function generateDefaultExperiment(numberofsets,wellsperset,repeatsperset){ //creates experiment objects with sets if configurations
-  var exp=new experiment();
+  var exp= new experiment();
   exp.directory="/data/";
   exp.prefix="img";
   exp.sets=[];
@@ -1222,6 +1222,8 @@ function ConnectIfAttached(ports,findstr){
 
 
 module.exports = {
+  program,
+  load_configuration,
   zeroPad,
   generateLEDList,
   led_to_arduino_string,
@@ -1240,4 +1242,5 @@ module.exports = {
   check_directory_empty,
   fix_directory_name,
   make_directory_if_needed,
+  LEDS
 };
