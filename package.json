@@ -4,6 +4,8 @@
     "test:js": "jest"
   },
   "devDependencies": {
-    "jest": "^30.0.0"
+    "commander": "^14.0.0",
+    "jest": "^30.0.0",
+    "rewire": "^8.0.0"
   }
 }

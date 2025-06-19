@@ -249,11 +249,18 @@ function generateLEDList(startLED,endLED){ //helper function that generates list
   return res;
 }
 
-function assignletter(i){ //allows any non-negative index
-  lcase=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'];
-  if (i<lcase.length) return lcase[i];
-  else return ('*');
+function assignletter(i) {
+  const lcase = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m',
+    'n','o','p','q','r','s','t','u','v','w','x','y','z'
+  ];
+  // test i is >= 0 AND i is < length:
+  if (i >= 0 && i < lcase.length) {
+    return lcase[i];
+  }
+  return '*';
 }
+
 
 function selectedindex(i){ //returns index of desired cell
   for (var k=0;k<selectedcells.length;k++){
@@ -1235,6 +1242,8 @@ module.exports = {
   writeStatus,
   generateDefaultExperiment,
   isJSONfile,
+  exp,
+  experiment,
   isDirectory,
   getfilelist,
   get_json_filelist,
@@ -1242,5 +1251,8 @@ module.exports = {
   check_directory_empty,
   fix_directory_name,
   make_directory_if_needed,
-  LEDS
+  LEDS,
+  LED,
+  selectedcells,
+  activeset
 };

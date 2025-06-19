@@ -1,6 +1,26 @@
+// At the *very* top of the test file:
+jest.mock('commander', () => {
+  // A minimal fake Commander.Program
+  class FakeProg {
+    version()   { return this; }
+    description(){ return this; }
+    option()    { return this; }
+    command()   { return this; }
+    action()    { return this; }
+    parseAsync(){ return Promise.resolve(); }
+  }
+  const program = new FakeProg();
+  return { program, Command: FakeProg };
+});
+
 const {
   program,
+  exp,
+  experiment,
+  selectedcells,
+  activeset,
   load_configuration,
+  LED,
   LEDS,
   zeroPad,
   generateLEDList,
@@ -22,6 +42,7 @@ const {
   make_directory_if_needed
 } = require('../../javascript/interactivecls.js');
 
+const rewire = require('rewire');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -289,26 +310,136 @@ describe('load_configuration()', () => {
 });
 
 // Function: changeCurrentSet
+describe('changeCurrentSet()', () => {
+  beforeEach(() => jest.resetModules());
 
-test('changeCurrentSet creates new set based on selectedcells', () => {
-  // 1) Pick some cells
-  interactive.selectedcells = [1, 3];
-  interactive.activeset    = 0;
+  it('initializes a new set when none exists', () => {
+    const interactive = require('../../javascript/interactivecls.js');
+    const { exp, LEDS, LED, selectedcells, changeCurrentSet } = interactive;
 
-  // 2) Give those LEDs unique properties
-  LEDS[1].color     = 'G';
-  LEDS[1].intensity = 5;
-  LEDS[3].color     = 'B';
-  LEDS[3].intensity = 2;
+    // Simulate selecting wells 2 and 5 with custom settings
+    selectedcells.push(2, 5);
+    LEDS[2].color = 'G'; LEDS[2].intensity = 3;
+    LEDS[5].color = 'B'; LEDS[5].intensity = 7;
 
-  // 3) Call the function under test
-  changeCurrentSet();
+    // Invoke the function under test
+    changeCurrentSet();
 
-  // 4) Inspect the newly created set in interactive.exp.sets[0]
-  const wells = interactive.exp.sets[0].wells;
-  expect(wells).toHaveLength(2);
+    const s = exp.sets[0];
+    expect(s).toBeDefined();
+    expect(s.setnum).toBe(0);
+    expect(s.repeats).toBe(10);
+    expect(s.wells).toHaveLength(2);
+    expect(s.wells[0]).toEqual(expect.objectContaining({ index: 2, color: 'G', intensity: 3 }));
+    expect(s.wells[1]).toEqual(expect.objectContaining({ index: 5, color: 'B', intensity: 7 }));
+  });
 
-  // 5) Verify each well matches the selected LED state
-  expect(wells[0]).toMatchObject({ index: 1, color: 'G', intensity: 5 });
-  expect(wells[1]).toMatchObject({ index: 3, color: 'B', intensity: 2 });
+  it('overwrites an existing set without changing repeats', () => {
+    const interactive = require('../../javascript/interactivecls.js');
+    const { exp, LEDS, LED, selectedcells, changeCurrentSet } = interactive;
+
+    // Pre-populate an existing set at index 0
+    exp.sets[0] = { setnum: 0, repeats: 4, wells: [ new LED(0, 'R', 1) ] };
+
+    // Simulate selecting new wells 1 and 2
+    selectedcells.push(1, 2);
+    LEDS[1].color = 'Y'; LEDS[1].intensity = 5;
+    LEDS[2].color = 'P'; LEDS[2].intensity = 8;
+
+    // Invoke the function under test
+    changeCurrentSet();
+
+    const s = exp.sets[0];
+    expect(s.setnum).toBe(0);
+    expect(s.repeats).toBe(4);  // unchanged
+    expect(s.wells).toHaveLength(2);
+    expect(s.wells).toEqual(expect.arrayContaining([
+      expect.objectContaining({ index: 1, color: 'Y', intensity: 5 }),
+      expect.objectContaining({ index: 2, color: 'P', intensity: 8 })
+    ]));
+  });
 });
+
+
+
+
+
+describe('copySetToTable()', () => {
+  let interactive, exp, LEDS, LED, copySetToTable, modulePath;
+
+  beforeAll(() => {
+    modulePath = require.resolve(
+      path.join(__dirname, '../../javascript/interactivecls.js')
+    );
+  });
+
+  beforeEach(() => {
+    jest.resetModules();
+    interactive    = rewire(modulePath);
+
+    exp            = interactive.__get__('exp');
+    LEDS           = interactive.__get__('LEDS');
+    LED            = interactive.__get__('LED');
+    copySetToTable = interactive.__get__('copySetToTable');
+  });
+
+  it('clears selectedcells when no active set exists', () => {
+    let selectedcells = interactive.__get__('selectedcells');
+    selectedcells.push(1, 2, 3);
+    expect(selectedcells).toHaveLength(3);
+
+    copySetToTable();
+
+    selectedcells = interactive.__get__('selectedcells');
+    expect(selectedcells).toHaveLength(0);
+  });
+
+
+});
+
+describe('generateLEDList()', () => {
+  it('returns an array of LED instances with correct indices, default color R and intensity 9', () => {
+    const start = 0;
+    const end = 3;
+    const list = generateLEDList(start, end);
+    // Should be an array of length end - start
+    expect(Array.isArray(list)).toBe(true);
+    expect(list).toHaveLength(end - start);
+
+    // Each element should be an LED instance with proper properties
+    list.forEach((led, i) => {
+      expect(led).toBeInstanceOf(LED);
+      expect(led).toMatchObject({ index: start + i, color: 'R', intensity: 9 });
+    });
+  });
+
+  it('returns an empty array when start and end are equal', () => {
+    const list = generateLEDList(5, 5);
+    expect(Array.isArray(list)).toBe(true);
+    expect(list).toHaveLength(0);
+  });
+
+  it('handles non-zero start correctly for arbitrary ranges', () => {
+    const start = 22;
+    const end = 24;
+    const list = generateLEDList(start, end);
+    expect(list).toHaveLength(2);
+    expect(list[0]).toMatchObject({ index: 22, color: 'R', intensity: 9 });
+    expect(list[1]).toMatchObject({ index: 23, color: 'R', intensity: 9 });
+  });
+});
+
+describe('assignletter()', () => {
+  it('returns letters a–z for indices 0 through 25', () => {
+    for (let i = 0; i < 26; i++) {
+      const expected = String.fromCharCode(97 + i); // 'a' has char code 97
+      expect(assignletter(i)).toBe(expected);
+    }
+  });
+
+  it('returns "*" for out-of-range indices', () => {
+    expect(assignletter(26)).toBe('*');
+    expect(assignletter(100)).toBe('*');
+  });
+});
+
