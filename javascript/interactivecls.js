@@ -93,6 +93,10 @@ function generateDefaultExperiment(numberofsets,wellsperset,repeatsperset){ //cr
    return exp;
   }
 
+
+//for testing
+
+
 //onfiguring your Commander program’s metadata
 program
   .name('CLItester')
@@ -169,8 +173,9 @@ program.command('show') //prints out a simple x×y grid of coordinate placeholde
 //program.parse();
 //const options = program.opts();
 
-if (require.main === module) {
+
   // This block only runs when you execute the file directly
+if (require.main === module) {
   program.parse();
   const options = program.opts();
   live();
@@ -1253,6 +1258,7 @@ module.exports = {
   make_directory_if_needed,
   LEDS,
   LED,
+  live,
   selectedcells,
   activeset
 };

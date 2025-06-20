@@ -281,8 +281,8 @@ describe('load_configuration()', () => {
 
   beforeAll(() => {
     // Prepare a JSON that will set:
-    // LEDS[0] → color 'R', intensity 1
-    // LEDS[1] → color 'G', intensity 2
+    // • LEDS[0] → color 'R', intensity 1
+    // • LEDS[1] → color 'G', intensity 2
     // the rest stay at their defaults
     const payload = { defaults: ['R1,G2'] };
     fs.writeFileSync(cfgFile, JSON.stringify(payload, null, 2));
@@ -308,6 +308,7 @@ describe('load_configuration()', () => {
     }
   });
 });
+
 
 // Function: changeCurrentSet
 describe('changeCurrentSet()', () => {
@@ -513,4 +514,3 @@ describe('renderTable()', () => {
     logSpy.mockRestore();
   });
 });
-
