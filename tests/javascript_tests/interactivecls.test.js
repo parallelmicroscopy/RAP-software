@@ -443,3 +443,74 @@ describe('assignletter()', () => {
   });
 });
 
+describe('selectedindex()', () => {
+  beforeEach(() => {
+    // clear out any prior selections
+    selectedcells.length = 0;
+  });
+
+  it('returns -1 when selectedcells is empty', () => {
+    expect(selectedcells).toHaveLength(0);
+    expect(selectedindex(0)).toBe(-1);
+    expect(selectedindex(42)).toBe(-1);
+  });
+
+  it('returns the correct position for an existing entry', () => {
+    // simulate selecting wells 2, 5, 9
+    selectedcells.push(2, 5, 9);
+    expect(selectedcells).toEqual([2, 5, 9]);
+
+    expect(selectedindex(2)).toBe(0);
+    expect(selectedindex(5)).toBe(1);
+    expect(selectedindex(9)).toBe(2);
+  });
+
+  it('returns -1 for values not in selectedcells', () => {
+    selectedcells.push(3, 7, 11);
+    expect(selectedcells).toEqual([3, 7, 11]);
+
+    expect(selectedindex(4)).toBe(-1);
+    expect(selectedindex(99)).toBe(-1);
+  });
+
+  it('returns the first index for duplicate entries', () => {
+    selectedcells.push(8, 8, 12);
+    expect(selectedcells).toEqual([8, 8, 12]);
+
+    // should pick up the very first occurrence
+    expect(selectedindex(8)).toBe(0);
+    expect(selectedindex(12)).toBe(2);
+  });
+});
+
+describe('renderTable()', () => {
+  beforeEach(() => {
+    // start with no selected cells
+    selectedcells.length = 0;
+  });
+
+  it('prints a grid containing all indices for a given x/y dimension', () => {
+    // Capture console.log calls
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    // Should not throw
+    expect(() => renderTable(3, 2)).not.toThrow();
+
+    // Must have printed something
+    expect(logSpy).toHaveBeenCalled();
+
+    // Combine all logged strings into one big text blob
+    const output = logSpy.mock.calls
+      .flat()
+      .filter(arg => typeof arg === 'string')
+      .join('\n');
+
+    // Expect to see each index from 0 through 5
+    [0,1,2,3,4,5].forEach(i => {
+      expect(output).toContain(i.toString());
+    });
+
+    logSpy.mockRestore();
+  });
+});
+
