@@ -1,6 +1,6 @@
 This version of the RAP control software is built ontop of a python SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
 
-<b> Before downloading the software in this git download the following if needed</b>
+### Before downloading the software in this git download the following if needed
 
 1) Python: https://www.python.org/downloads/windows/
 2) Node js: https://nodejs.org/en/download/
@@ -14,7 +14,7 @@ Ensure that <b> python, pip, node,</b> and <b> npm </b> are all configured to be
 
 You may also need a text or code editor (e.g. vscode, or texpad: https://www.textpad.com/home for PCs)
 
-<b> Download the software in this repository</b>
+### Download the software in this repository
 ```
 git clone https://github.com/parallelmicroscopy/RAP-software
 ```
@@ -22,18 +22,21 @@ git clone https://github.com/parallelmicroscopy/RAP-software
 
 navigate to the green 'code' button, 'download as zip' and decompress the files in your 'documents' folder.
 
-<b> Setup instructions</b>
-Once you've downloaded the software, read the instructions in the 'docs' directory to finish the install.
+### Setup instructions
 
-guide to starting (all in terminal):
+Once you've downloaded the software, read the instructions in the 'docs' directory.
+
+<b> From the terminal: </b>
 
 installing requirements:
+```
 pip install -r requirements.txt
 npm install
-
+```
 running tests:
+```
 pytest
 npm test
-
+```
 'pytest' tests the functionality in the vimba_rap3.py file while 'npm test' tests the interactivecls.js file. These two make up the
 majority of the "thinking" in the project.
