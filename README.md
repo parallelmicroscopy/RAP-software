@@ -20,7 +20,7 @@ git clone https://github.com/parallelmicroscopy/RAP-software
 ```
 <i>or</i>
 
-navigate to the green button and 'download as zip'
+navigate to the green 'code' button, 'download as zip' and decompress the files in your 'documents' folder.
 
 <b> Setup instructions</b>
 Once you've downloaded the software, read the instructions in the 'docs' directory to finish the install.
