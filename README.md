@@ -2,7 +2,7 @@ This version of the RAP control software is built ontop of a python SDK supplied
 
 <i> For Hardware </i> see: https://github.com/parallelmicroscopy/24-well-RAP-hardware
 
-### Before downloading the software in this git download the following if needed
+### Before downloading the RAP software, install:
 
 1) Python: https://www.python.org/downloads/windows/
 2) Node js: https://nodejs.org/en/download/
