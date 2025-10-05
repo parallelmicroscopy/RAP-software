@@ -1,5 +1,7 @@
 This version of the RAP control software is built ontop of a python SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
 
+<i> For Hardware </i> see: 
+
 ### Before downloading the software in this git download the following if needed
 
 1) Python: https://www.python.org/downloads/windows/
@@ -26,9 +28,16 @@ navigate to the green 'code' button, 'download as zip' and decompress the files 
 
 Once you've downloaded the software, read the instructions in the 'docs' directory.
 
+#### Arduino instructions:
+Open the arduino ide, and upload 'RAP_Alberta_Fastled.ino' to your Arduino Uno card.
+
+
+#### Download additional dependencies and requirements:
+
+The python and javascript programs use several public packages that can be downloaded and installed using <b>pip</b> and <b>npm</b>.
+
 <b> From the terminal: </b>
 
-installing requirements:
 ```
 pip install -r requirements.txt
 npm install
@@ -38,5 +47,4 @@ running tests:
 pytest
 npm test
 ```
-'pytest' tests the functionality in the vimba_rap3.py file while 'npm test' tests the interactivecls.js file. These two make up the
-majority of the "thinking" in the project.
+'pytest' tests the functionality in the vimba_rap3.py file while 'npm test' tests the interactivecls.js file. These two programs do the majority of the work.
