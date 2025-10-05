@@ -1,6 +1,10 @@
-This version of the RAP control software is built ontop of a python SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
+This repository has **software** for controlling RAP microscopes.
 
-<i> For Hardware </i> see: https://github.com/parallelmicroscopy/24-well-RAP-hardware
+For a general **introduction and overview** see: https://github.com/parallelmicroscopy/overview
+
+For **hardware** see: https://github.com/parallelmicroscopy/24-well-RAP-hardware
+
+This version of the RAP control software is built ontop of a python SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
 
 ### Before downloading the RAP software, install:
 
