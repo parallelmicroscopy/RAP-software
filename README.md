@@ -20,7 +20,9 @@ Ensure that <b> python, pip, node,</b> and <b> npm </b> are all configured to be
 
 You may also need a text or code editor (e.g. vscode, or texpad: https://www.textpad.com/home for PCs)
 
-### Download the software in this repository
+### Download the software
+Either:
+
 ```
 git clone https://github.com/parallelmicroscopy/RAP-software
 ```
