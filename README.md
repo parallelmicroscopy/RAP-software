@@ -1,10 +1,10 @@
-This page is for downloading and installing the **software** for controlling RAP microscopes.
+This page is for downloading and installing the **software** for controlling RAP (parallel) microscopes. 
 
 For a general **introduction and overview** see: https://github.com/parallelmicroscopy/overview
 
 For **hardware** see: https://github.com/parallelmicroscopy/24-well-RAP-hardware
 
-The RAP ontrol software is built ontop of a python SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
+The RAP ontrol software is built ontop of a python / openCV SDK supplied by Allied Vision and has javascript (for the terminal command line interface) and and c++ (for controlling the Arduino microcontroller).
 
 ### Before downloading the RAP software, install:
 
