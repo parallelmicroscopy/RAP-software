@@ -18,7 +18,7 @@ The RAP ontrol software is built ontop of a python / openCV SDK supplied by Alli
 
 Ensure that <b> python, pip, node,</b> and <b> npm </b> are all configured to be on your path (i.e. callable from the command line).
 
-You may also need a text or code editor (e.g. vscode, or texpad: https://www.textpad.com/home for PCs)
+You may also need a text or code editor (e.g. vscode, or texpad: https://www.textpad.com/home for PCs).
 
 ### Download the software
 Either:
