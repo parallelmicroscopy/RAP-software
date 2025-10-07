@@ -7,13 +7,11 @@ The RAP ontrol software is built ontop of a python / openCV SDK supplied by Alli
 
 ### 1) Install these packages if you don't have them:
 
-1) Python: https://www.python.org/downloads/windows/
-2) Node js: https://nodejs.org/en/download/
-3) Vimba-x (64 bit): https://www.1stvision.com/cameras/Allied-Vision-Vimba-X-software#
-4) Vimba python libraries: https://github.com/alliedvision/VmbPy
-    <br>
-    (follow the installation instructions on the github page).
-6) Arduino IDE : https://www.arduino.cc/en/software/
+- Python: https://www.python.org/downloads/windows/
+- Node js: https://nodejs.org/en/download/
+- Vimba-x (64 bit): https://www.1stvision.com/cameras/Allied-Vision-Vimba-X-software#
+- Vimba python libraries: https://github.com/alliedvision/VmbPy
+- Arduino IDE : https://www.arduino.cc/en/software/
 
 Ensure that <b> python, pip, node,</b> and <b> npm </b> are all configured to be on your path (i.e. callable from the command line).
 
@@ -37,7 +35,7 @@ Once you've downloaded the software, read the instructions in the 'docs' directo
 #### a) Arduino instructions:
 Open the arduino ide, and upload 'RAP_Alberta_Fastled.ino' to your Arduino Uno card.
 <br>
-The software uses the FastLED.h (https://github.com/FastLED/FastLED) library set for a 24 array of Dotstar (https://learn.adafruit.com/adafruit-dotstar-leds/overview) LEDs. If you use a different LED type (e.g. Neopixels, as was used in the original eLife publication)  or array size, you will have to make minor changes to the microcontroller .ino (c++) file.
+The software uses the FastLED.h (https://github.com/FastLED/FastLED) library set for a 24 array of Dotstar (https://learn.adafruit.com/adafruit-dotstar-leds/overview) LEDs.  If you use a different LED type (e.g. Neopixels, as was used in the original eLife publication)  or array size, *you will have to make minor changes to the microcontroller .ino (c++) file*.
 
 
 #### b) Download additional dependencies and requirements:
