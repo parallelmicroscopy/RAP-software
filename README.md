@@ -49,15 +49,26 @@ The python and javascript programs also use several public packages that can be 
 
 <b>In the terminal from the root of your project: </b>
 
-You need to install the python requirements into a 'venv'. This can be done with the following commands:
+You need to install the python requirements into a 'venv'. This can be done with the following commands:  
+on windows  
 ```
+#1
+
+# On Windows
 python -m venv venv
 venv\Scripts\activate
+
+# On macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+
+#2
+
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Installing the Javascript requirements
+Installing the Javascript requirements  
 ```
 npm install
 ```
