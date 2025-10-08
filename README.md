@@ -39,16 +39,30 @@ The software uses the FastLED.h (https://github.com/FastLED/FastLED) library set
 
 
 #### b) Download additional dependencies and requirements:
+To run this project, you need the latest versions of node and python. They can be found here:  
+python -> https://www.python.org/downloads/  
+node -> https://nodejs.org  
 
-The python and javascript programs use several public packages that can be downloaded and installed using <b>pip</b> and <b>npm</b>.
+The python and javascript programs also use several public packages that can be downloaded and installed using <b>pip</b> and <b>npm</b>.
 
-<b> From the terminal: </b>
 
+
+<b>In the terminal from the root of your project: </b>
+
+You need to install the python requirements into a 'venv'. This can be done with the following commands:
 ```
+python -m venv venv
+venv\Scripts\activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+Installing the Javascript requirements
+```
 npm install
 ```
-running tests:
+
+Now just run some tests to make sure everything works. 
 ```
 pytest
 npm test
