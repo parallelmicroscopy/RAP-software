@@ -67,11 +67,14 @@ This opens a command line interface which should look like this:
 
 <img width="467" height="137" alt="image" src="https://github.com/user-attachments/assets/07f29f90-e89e-4521-911a-190b2e8b6190" />
 
-If you've connected the Arduino microcontroller and attached it your LED array, navigate to 'live mode', where you should see the following:
+If you've connected the Arduino microcontroller, uploaded the .ino file, and correctly attached it your LED array,  navigate to 'live mode', where you should see the following:
 
 <img width="392" height="454" alt="image" src="https://github.com/user-attachments/assets/b01e8e24-22eb-4698-8f8e-11f9eb6ad865" />
 
-Navigating between LEDs by using the **WASD** keys (or arrow keys) will result in the corresponding LEDS to light up.
+Navigating between LEDs by using the **WASD** keys (or arrow keys) will result in the corresponding LEDS to light up. 
+<br>
+<br>
+If you have trouble with these confirmation steps... contact gil.bub@mcgill.ca for hardware and software debugging help.
 
 
 
