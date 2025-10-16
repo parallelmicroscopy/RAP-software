@@ -14,7 +14,6 @@ jest.mock('commander', () => {
 });
 
 const {
-  program,
   exp,
   experiment,
   selectedcells,
@@ -42,6 +41,7 @@ const {
   make_directory_if_needed
 } = require('../../javascript/interactivecls.js');
 
+const { program }  = require("../interactivecls.js")
 const rewire = require('rewire');
 const fs = require('fs');
 const path = require('path');

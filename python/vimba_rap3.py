@@ -47,9 +47,9 @@ from vmbpy import *
 
 
 # Setting config and data saving paths
-defaultCameraConfigDirectory="C:/Users/gilbu/Documents/RAP/config"
-defaultFreerunConfigfile="C:/Users/gilbu/Documents/RAP/config/freerun.xml"
-defaultTriggerConfigfile="C:/Users/gilbu/Documents/RAP/config/trigger.xml"
+defaultCameraConfigDirectory="C:/Users/opticslab/RAP_Software/RAP-software/config"
+defaultFreerunConfigfile="C:/Users/opticslab/RAP_Software/RAP-software/config/freerun.xml"
+defaultTriggerConfigfile="C:/Users/opticslab/RAP_Software/RAP-software/config/trigger.xml"
 defaultSaveRootDirectory="D:/data/rap"
 currentSaveDirectory=defaultSaveRootDirectory+"/temp1"
 
@@ -502,6 +502,8 @@ def process_js_command(str,cam):
 
     match commandstring:
         #alter settings file
+        case "hello":
+             sys.stdout.write("py. hi there\n")
         case "loadcamerasettings" | "loadcamera" | "camerasettings":
             if (len(command_array)!=2):
                 sys.stdout.write("py. Error - require a path to an xml file\n")

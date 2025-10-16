@@ -85,7 +85,7 @@ npm test
 In the terminal (cmd) window, navigate to the 'RAP/javascript' directory, and enter:
 
 ```
-> node interactivecls.js config currentconfig.json
+npm start
 ```
 
 This opens a command line interface which should look like this:

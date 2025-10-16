@@ -16,15 +16,30 @@ const fs = require('node:fs');
 const { AutoComplete } = require('enquirer');
 const Store = require('data-store'); //provides a simple JSON-backed key/value store on disk
 
+const cli_options={
+  type: 'select',
+  name: 'nextFunction',
+  message: 'Main menu',
 
+  choices: [
+    { title: 'configuration menu', value: 100},
+    { title: 'live mode', value: 1 },
+    { title: 'python command', value:2  },
+    { title: 'arduino command', value:3},
+    { title: 'quit', value: 0 }
+  ],
+};
 
 //because of testing
 //const { SerialPort } = require('serialport');
-
+let SerialPort = null;
 // only load the native addon when NOT in test mode
-const SerialPort = process.env.NODE_ENV === "test"
-  ? null
-  : require("serialport");
+if (process.env.Node_env !== "test"){
+  ({ SerialPort} = require("serialport"))
+}
+//const SerialPort = process.env.NODE_ENV === "test"
+//  ? null
+//  : require("serialport");
 
 
 
@@ -840,19 +855,7 @@ const config_options={
 };
 
 //allows user to select which menu they want to go to
-const cli_options={
-    type: 'select',
-    name: 'nextFunction',
-    message: 'Main menu',
 
-    choices: [
-      { title: 'configuration menu', value: 100},
-      { title: 'live mode', value: 1 },
-      { title: 'python command', value:2  },
-      { title: 'arduino command', value:3},
-      { title: 'quit', value: 0 }
-    ],
-  };
 
 
 //central menu router
@@ -1101,7 +1104,6 @@ async function send_to_arduino(bstr){
 }
 
 
-
 //spawns python process
 var python; //Node.js ChildProcess object running vimba_rap3.py
 var reader;
@@ -1112,12 +1114,23 @@ var python_text_out=[]
 async function run_python(){
   console.log("trying to run python vimba_rap3.py\n")
   const spawn = require("child_process").spawn;
-  const pyFile = '../python/vimba_rap3.py';
-  python = spawn("python3", [pyFile, {stdio:["pipe","pipe","inherit"]} ]);
-  python.on(`spawn`, () => {
+  const pyFile = 'python/vimba_rap3.py';
+
+  console.log(pyFile, 'exists?', fs.existsSync(pyFile));
+  python = spawn("python", [pyFile], {
+    stdio:["pipe","pipe","inherit"],
+    env: process.env
+  });
+  console.log(python.pid);
+  python.on('error', () => {console.log("error")});
+  python.on('exit', () => {console.log("exit")});
+  python.on('close', () => {console.log("close")});
+  console.log(process.env.VIRTUAL_ENV);
+  python.once(`spawn`, () => {
     //console.log(`[node:data:out] Sending initial data packet`);
     //since this doesn't say quit - python will ask for a frame
     python_initialized=1;
+    console.log("spawned\n");
     send_python(python_user_command); //Sends an initial handshake
     });
      reader = nexline({
