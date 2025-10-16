@@ -43,42 +43,21 @@ To run this project, you need the latest versions of node and python. They can b
 python -> https://www.python.org/downloads/  
 node -> https://nodejs.org  
 
-The python and javascript programs also use several public packages that can be downloaded and installed using <b>pip</b> and <b>npm</b>.
 
 
+<b>In the terminal from the root of your project: </b>  
+Run the python file that downloads the dependencies.
 
-<b>In the terminal from the root of your project: </b>
-
-You need to install the python requirements into a 'venv'. This can be done with the following commands:  
-on windows  
 ```
-#1
-
-# On Windows
-python -m venv venv
-venv\Scripts\activate
-
-# On macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-
-#2
-
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python setup.py
 ```
 
-Installing the Javascript requirements  
-```
-npm install
-```
 
 Now just run some tests to make sure everything works. 
 ```
 pytest
-npm test
 ```
-'pytest' tests the functionality in the vimba_rap3.py file while 'npm test' tests the interactivecls.js file. These two programs do the majority of the work.
+If pytest fails, rerun `python setup.py'. If else, we will need to diagnose the issue.
 
 #### c) Confirm that the software runs:
 
