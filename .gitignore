@@ -2,6 +2,7 @@ node_modules/
 python/venv/
 javascript/node_modules/
 venv/
-tests/python_tests/__pycache__
+tests/python_tests/__pycache__/
 python_history.json
 vimba_rap_out.log
+python/__pycache__/
