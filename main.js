@@ -5,7 +5,7 @@
 
 import { Signaler } from "./signalling.js";
 // Choose ONE of these, depending on what you implemented:
-import { liveImageStreamFromBridge } from "./stream.js";
+import { liveImageStreamFromLatestTemp as liveImageStreamFromBridge } from "./stream.js";
 // import { liveImageStreamFromLatestTemp } from "./latestTempStream.js";
 
 const ui = {
