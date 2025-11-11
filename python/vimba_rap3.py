@@ -50,7 +50,11 @@ from vmbpy import *
 defaultCameraConfigDirectory="C:/Users/opticslab/RAP_Software/RAP-software/config"
 defaultFreerunConfigfile="C:/Users/opticslab/RAP_Software/RAP-software/config/freerun.xml"
 defaultTriggerConfigfile="C:/Users/opticslab/RAP_Software/RAP-software/config/trigger.xml"
-defaultSaveRootDirectory="D:/data/rap"
+
+# defaultSaveRootDirectory="D:/data/rap"
+project_root = Path(__file__).resolve().parent.parent
+defaultSaveRootDirectory = os.path.join(project_root, "data")
+
 currentSaveDirectory=defaultSaveRootDirectory+"/temp1"
 
 

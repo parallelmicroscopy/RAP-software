@@ -6,3 +6,4 @@ tests/python_tests/__pycache__/
 python_history.json
 vimba_rap_out.log
 python/__pycache__/
+data/
