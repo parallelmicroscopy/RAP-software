@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>RAP → WebRTC (Single Stream)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header { padding: 1rem 1.25rem; border-bottom: 1px solid #ddd; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 1rem; }
+    label { font-size: 0.9rem; color: #555; display: block; margin-bottom: 0.25rem; }
+    input, select, button {
+      padding: 0.55rem 0.7rem; border-radius: 10px; border: 1px solid #ccc; font-size: 0.95rem;
+      background: inherit; color: inherit;
+    }
+    button { cursor: pointer; border: 1px solid #999; }
+    button[disabled] { opacity: 0.5; cursor: not-allowed; }
+    video {
+      width: 100%; max-width: 960px; aspect-ratio: 16 / 9; background: #000;
+      border-radius: 12px; border: 1px solid #111;
+    }
+    .status { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; opacity: 0.85; }
+    .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container row">
+      <strong>RAP Live Stream</strong>
+      <div class="spacer"></div>
+      <div class="status" id="status">Idle</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" style="margin-bottom: 1rem;">
+      <div class="row" style="gap: 1.25rem;">
+        <div>
+          <label for="roleSelect">Role</label>
+          <select id="roleSelect">
+            <option value="streamer">Streamer</option>
+            <option value="viewer" selected>Viewer</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="roomInput">Room</label>
+          <input id="roomInput" type="text" placeholder="default-room" />
+        </div>
+
+        <div style="display:flex; gap:.5rem; align-items:flex-end;">
+          <button id="initButton">Initialize</button>
+          <button id="startStream" disabled>Start Streaming</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <label for="preview">Live Video</label>
+      <video id="preview" playsinline autoplay muted></video>
+    </section>
+  </main>
+
+  <!-- Load your app -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
