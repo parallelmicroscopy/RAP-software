@@ -1,7 +1,13 @@
 // signalling.js
 export class Signaler {
-  constructor({ room, url = "ws://localhost:8080" } = {}) {
-    this.url = url;
+  constructor({ room, url } = {}) {
+    // Default to the current page host so remote viewers don't fail on "localhost"
+    const defaultUrl =
+      typeof window !== "undefined"
+        ? `ws://${window.location.hostname}:8080`
+        : "ws://localhost:8080";
+
+    this.url = url || defaultUrl;
     this.room = room || "default-room";
     this.ws = null;
     this.id = null;

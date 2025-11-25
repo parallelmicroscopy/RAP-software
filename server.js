@@ -66,6 +66,25 @@ function sendSSE(folder, msg) {
   for (const res of set) res.write(`data: ${msg}\n\n`);
 }
 
+// Fallback: find the newest frame on disk (used if watcher never saw an event)
+function getLatestFileInFolder(folder) {
+  const abs = path.join(DATA_ROOT, folder);
+  const files = [];
+  for (const f of fs.readdirSync(abs, { withFileTypes: true })) {
+    if (f.isFile() && /\.(png|jpe?g|webp|tif|tiff)$/i.test(f.name)) {
+      const full = path.join(abs, f.name);
+      try {
+        const mtime = fs.statSync(full).mtimeMs;
+        files.push({ name: f.name, mtime });
+      } catch {
+        // file was removed between readdir and stat; skip it
+      }
+    }
+  }
+  files.sort((a, b) => b.mtime - a.mtime);
+  return files[0]?.name || null;
+}
+
 app.get("/live/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -89,10 +108,19 @@ app.get("/live/frame", async (req, res) => {
   if (!folder) return res.status(404).end("No temp folder found");
   ensureFolderSetup(folder);
 
-  const latest = latestByFolder.get(folder);
+  // Prefer the watcher-reported latest; fall back to newest file on disk.
+  let latest = latestByFolder.get(folder) || getLatestFileInFolder(folder);
   if (!latest) return res.status(404).end("No frames yet");
 
-  const abs = path.join(DATA_ROOT, folder, latest);
+  let abs = path.join(DATA_ROOT, folder, latest);
+
+  // If rolling delete removed it, fall back to newest file and update cache.
+  if (!fs.existsSync(abs)) {
+    latest = getLatestFileInFolder(folder);
+    if (!latest) return res.status(404).end("No frames yet");
+    abs = path.join(DATA_ROOT, folder, latest);
+    latestByFolder.set(folder, latest);
+  }
   const ext = path.extname(abs).toLowerCase();
 
   try {
@@ -128,15 +156,45 @@ console.log(`🛰️  WebSocket server listening on ws://localhost:${WS_PORT}`);
 const clients = new Map();
 wss.on("connection", ws => {
   const id = crypto.randomUUID();
-  clients.set(id, ws);
+  clients.set(id, { ws, room: null });
   ws.send(JSON.stringify({ type: "welcome", id }));
 
   ws.on("message", msg => {
     try {
-      const { to, type, payload } = JSON.parse(msg);
-      const dest = clients.get(to);
-      if (dest && dest.readyState === ws.OPEN) {
-        dest.send(JSON.stringify({ from: id, type, payload }));
+      const parsed = JSON.parse(msg);
+      const { to, type, payload, room } = parsed;
+
+      // record room membership
+      if (type === "join") {
+        const r = payload?.room || room || "default-room";
+        const rec = clients.get(id);
+        if (rec) rec.room = r;
+        return;
+      }
+
+      // direct message
+      if (to) {
+        const dest = clients.get(to);
+        if (dest && dest.ws.readyState === ws.OPEN) {
+          const body = (payload && typeof payload === "object")
+            ? { ...payload, type }
+            : { type, payload };
+          dest.ws.send(JSON.stringify({ from: id, ...body }));
+        }
+        return;
+      }
+
+      // broadcast to same room (excluding sender)
+      const senderRoom = clients.get(id)?.room || room || "default-room";
+      for (const [otherId, client] of clients.entries()) {
+        if (otherId === id) continue;
+        if (client.room !== senderRoom) continue;
+        if (client.ws.readyState === ws.OPEN) {
+          const body = (payload && typeof payload === "object")
+            ? { ...payload, type }
+            : { type, payload };
+          client.ws.send(JSON.stringify({ from: id, ...body }));
+        }
       }
     } catch (e) {
       console.error("bad msg", e);

@@ -1,0 +1,12 @@
+WebRTC viewer stuck on "Viewer: waiting for offer"
+
+Root cause:
+- The signaling server broadcasts offers live only. If the streamer sends its offer before any viewer is initialized in the same room, the offer is lost. A later viewer sees "waiting for offer" because no offer arrived after it joined.
+
+Workaround:
+- Initialize the viewer first (set the same room, click Initialize so it waits), then Initialize + Start Streaming on the streamer. Or re-initialize the streamer after the viewer is ready so a fresh offer is sent.
+
+Potential long-term fixes:
+- Add server-side buffering of the latest offer per room so late viewers get it.
+- Have the viewer send a "need-offer" message upon join, prompting the streamer to re-offer.
+- Auto-reoffer from the streamer if no answer is received within a short timeout.

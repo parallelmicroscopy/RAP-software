@@ -67,6 +67,7 @@ opencv_display_format = PixelFormat.Mono8
 SAVETOGGLE=0 # 0 = don't save, 1 = save
 savedframes=0 # Max number of frames to save
 save_max=1000 # Counter for how many frames have been saved so far
+saved_files = deque(maxlen=save_max)  # track rolling saved filenames
 
 # Wells correspond to predefined regions in the sample space that the camera can image
 
@@ -418,12 +419,14 @@ def processsave(cv,str):
     global mode
     global savedframes
     global save_max
+    global saved_files
     mode = 0
     wi=str.rfind("=")
     num=(str[wi+1:]).strip()
     val=int(num)
     savedframes=0
     save_max=val
+    saved_files = deque(maxlen=save_max)
 
 """
 never used
@@ -478,7 +481,9 @@ def checkkeypress(cv2,cnum):
 def start_save(str1):
     global SAVETOGGLE
     global savedframes
+    global saved_files
     savedframes=0 #reset counter
+    saved_files = deque(maxlen=save_max)
     logging.info("startsave called, with {}".format(str1)) #logs the action
     os.chdir(str1) #Sets where saved files will go
     SAVETOGGLE=1 #activates saving mode
@@ -675,14 +680,21 @@ def maybesaveimage(cv2,display,num):
     global savedframes
     global save_max
     global SAVETOGGLE
+    global saved_files
     #print("in maybe save image with mode =")
     #print(mode)
     if SAVETOGGLE==1:
         filename="img{:09d}.tif".format(num)
         cv2.imwrite(filename, display)
-        savedframes=savedframes+1
-        if savedframes>=save_max:
-            SAVETOGGLE=0
+        # keep only the most recent `save_max` files by deleting the oldest
+        if save_max > 0 and len(saved_files) >= save_max:
+            try:
+                oldest = saved_files.popleft()
+                Path(oldest).unlink(missing_ok=True)
+            except Exception as e:
+                logging.warning(f"could not delete oldest file {oldest}: {e}")
+        saved_files.append(filename)
+        savedframes = min(len(saved_files), save_max if save_max > 0 else len(saved_files))
             
         
 # esponsible for creating and arranging OpenCV display windows based on the number of wells
